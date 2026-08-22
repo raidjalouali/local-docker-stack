@@ -14,15 +14,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create temp .env file
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Lint Python code
+        run: |
+          pip install flake8
+          flake8 app/ --max-line-length=100
+
+      - name: Validate Docker Compose file
         run: |
           echo "MYSQL_ROOT_PASSWORD=rootsecret" > .env
           echo "MYSQL_DATABASE=appdb" >> .env
           echo "MYSQL_USER=appuser" >> .env
           echo "MYSQL_PASSWORD=secretpass" >> .env
+          docker compose config
 
-      - name: Build and start Docker Compose stack
-        run: docker compose up -d --build
+      - name: Build Docker image
+        run: docker build -t local-api:test ./app
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'local-api:test'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Start Docker Compose stack
+        run: docker compose up -d
 
       - name: Test API endpoints
         run: |
