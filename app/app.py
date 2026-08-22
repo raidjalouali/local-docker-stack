@@ -13,6 +13,11 @@ def index():
     })
 
 
+@app.route('/health')
+def health():
+    return jsonify({"status": "healthy"}), 200
+
+
 @app.route('/db-check')
 def db_check():
     try:
@@ -29,5 +34,4 @@ def db_check():
 
 
 if __name__ == '__main__':
-    # 0.0.0.0 est necessaire pour ecouter sur toutes les interfaces
     app.run(host='0.0.0.0', port=5000)

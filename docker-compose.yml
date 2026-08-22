@@ -1,4 +1,3 @@
-
 services:
   web:
     image: nginx:alpine
@@ -11,6 +10,11 @@ services:
       - frontend_network
     depends_on:
       - api
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
 
   api:
     build: ./app
@@ -23,9 +27,19 @@ services:
     networks:
       - frontend_network
       - backend_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
   db:
     image: mysql:8.0
@@ -44,6 +58,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
 networks:
   frontend_network:
