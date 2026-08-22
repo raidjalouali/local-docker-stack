@@ -13,17 +13,33 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # 1. Verification de l'absence de secrets commites
+      - name: Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Qualite du code Python
       - name: Lint Python code
         run: |
           pip install flake8
           flake8 app/ --max-line-length=100
 
+      # 3. Linter de Dockerfile
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: app/Dockerfile
+
+      # 4. Validation de la syntaxe Docker Compose
       - name: Validate Docker Compose file
         run: |
           echo "MYSQL_ROOT_PASSWORD=rootsecret" > .env
@@ -32,9 +48,11 @@ jobs:
           echo "MYSQL_PASSWORD=secretpass" >> .env
           docker compose config
 
+      # 5. Build de l'image applicative
       - name: Build Docker image
         run: docker build -t local-api:test ./app
 
+      # 6. Scan de vulnerabilites Trivy
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -43,6 +61,7 @@ jobs:
           exit-code: '0'
           severity: 'CRITICAL,HIGH'
 
+      # 7. Test d'integration
       - name: Start Docker Compose stack
         run: docker compose up -d
 
@@ -52,6 +71,7 @@ jobs:
           curl -f http://localhost:8080/
           curl -f http://localhost:8080/db-check
 
+      # 8. Nettoyage
       - name: Stop stack
         if: always()
         run: docker compose down
