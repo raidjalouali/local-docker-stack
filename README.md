@@ -1,45 +1,47 @@
-# Stack web locale conteneurisée (Docker Compose, Nginx, Flask & MySQL)
+# Local 3-Tier Stack (Docker Compose, Nginx, Flask & MySQL)
 
-Projet personnel de mise en place d'une architecture 3-tiers conteneurisée sous Linux. L'objectif est de manipuler l'isolation réseau, la persistance de données et l'automatisation du déploiement via une chaîne CI/CD simple.
+Projet de lab local pour le déploiement et l'isolation d'une architecture applicative 3-tiers sous Linux.
 
-## Architecture
+## Architecture et isolation réseau
 
-L'application est découpée en 3 conteneurs distincts :
-- web (Nginx) : Reverse proxy recevant le trafic HTTP sur le port 8080 et le transférant à l'API.
-- api (Python / Flask) : Traite les requêtes applicatives et s'exécute sous un utilisateur non-root (appuser).
-- db (MySQL 8.0) : Stocke les données de manière persistante sur un volume Docker.
+L'infrastructure comprend 3 services répartis sur deux réseaux bridge distincts :
 
-### Réseaux virtuels
-- frontend_network : Liaison Nginx <-> API Flask.
-- backend_network : Liaison API Flask <-> MySQL (Réseau privé isolé, la BDD n'a aucun port exposé sur l'hôte).
+- web (Nginx) : Reverse proxy HTTP (port 8080) réexpédiant le trafic vers l'API.
+- api (Python / Flask) : Service applicatif exécuté sous un utilisateur non-root (appuser).
+- db (MySQL 8.0) : Base de données avec stockage persistant via un volume Docker (db_data).
 
-## Structure du projet
+Diagramme des flux :
 
-.
-├── .github/workflows/ci.yml  # Pipeline GitHub Actions (build & tests curl)
-├── app/                      # Code source Flask et Dockerfile
-├── nginx/                    # Configuration du reverse proxy
-├── .env                      # Variables d'environnement (exclu de Git)
-├── docker-compose.yml        # Orchestration multi-conteneurs
-└── README.md
+  [ Client ] ---> [ Nginx (8080) ] ---> [ API Flask (5000) ] ---> [ MySQL (3306) ]
+                   |_______________________|                   |____________________|
+                       frontend_network                           backend_network
+
+Note de sécurité : Le conteneur db est uniquement rattaché au réseau backend_network. Aucun port MySQL n'est publié sur la machine hôte.
 
 ## Démarrage rapide
 
-### Prérequis
-Docker Engine et Docker Compose V2 installés.
+1. Définir les variables d'environnement dans un fichier .env à la racine :
 
-1. Créer le fichier d'environnement .env à la racine :
 MYSQL_ROOT_PASSWORD=rootsecret
 MYSQL_DATABASE=appdb
 MYSQL_USER=appuser
 MYSQL_PASSWORD=secretpass
 
-2. Lancer l'infrastructure :
+2. Lancer la stack :
+
 docker compose up -d --build
 
-3. Vérifier les endpoints :
+3. Tester les endpoints :
+
 curl -i http://localhost:8080/
 curl -i http://localhost:8080/db-check
 
 4. Stopper l'environnement :
+
 docker compose down
+
+## Implémentation technique
+
+- Ordonnancement : Utilisation des healthchecks natifs (mysqladmin ping et endpoint HTTP) couplés à `condition: service_healthy` pour s'assurer que l'API n'essaie pas de se connecter à la BDD avant son initialisation complète.
+- Sécurité applicative : Exécution de l'API Flask sous un utilisateur dédié sans privilèges (appuser) défini dans le Dockerfile.
+- Limites de ressources : Définition de plafonds CPU et mémoire dans docker-compose.yml pour simuler un cadre de contraintes réelles.
