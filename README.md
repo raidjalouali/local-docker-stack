@@ -10,12 +10,6 @@ La stack se compose de 3 services répartis sur 2 réseaux Docker bridge distinc
 - api (Python / Flask) : API REST exécutée sous un utilisateur non-root (appuser).
 - db (MySQL 8.0) : Base de données avec stockage persistant (db_data), totalement isolée du web.
 
-### Schéma des flux
-
-[ Client ] ---> [ Nginx:8080 ] ---> [ API Flask:5000 ] ---> [ MySQL:3306 ]
-                 |_______________________|                  |____________________|
-                     frontend_network                          backend_network
-
 Note de sécurité : La base de données est uniquement connectée au réseau backend_network. Aucun port MySQL n'est publié sur la machine hôte.
 
 ## Pipeline CI/CD & DevSecOps (GitHub Actions)
@@ -45,7 +39,9 @@ docker compose up -d --build
 Ou passer par le Makefile :
 
 make up     # Build et lance les conteneurs
+
 make test   # Teste les endpoints via curl
+
 make clean  # Stoppe tout et nettoie les volumes
 
 ### 3. Endpoints disponibles
