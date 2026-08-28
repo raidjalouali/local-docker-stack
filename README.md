@@ -54,3 +54,21 @@ make clean  # Stoppe tout et nettoie les volumes
 - Non-root user : L'API Flask tourne sous un utilisateur système dédié (appuser) créé dans le Dockerfile.
 - Gestion des dépendances : L'API attend l'initialisation complète de MySQL via des healthchecks natifs (mysqladmin ping et condition: service_healthy).
 - Limites de ressources : Caps CPU et mémoire définis dans le docker-compose.yml pour chaque service.
+
+## Roadmap V2 : Target Architecture Cloud (AWS, Terraform & Kubernetes)
+
+Évolution projetée de la stack pour passer du lab local à un environnement Cloud managé de niveau production :
+
+### 1. Infrastructure as Code (Terraform)
+- **VPC Multi-AZ :** Provisionnement d'un VPC avec sous-réseaux publics (ALB) et sous-réseaux privés (EKS Workers, RDS).
+- **Services Managés :** Instanciation d'un cluster **AWS EKS** (Elastic Kubernetes Service) et d'une BDD gérée **Amazon RDS MySQL** (avec réplication Multi-AZ).
+
+### 2. Orchestration & Déploiement Kubernetes
+- **Conteneurisation Cloud :** Publication des images de l'API Flask sur **AWS ECR** (Elastic Container Registry) après passage réussi de la pipeline CI/CD.
+- **Manifests K8s :** Conversion des services Docker Compose en objets Kubernetes (`Deployment` pour Flask, `ClusterIP` pour le service interne).
+- **Gestion des Secrets :** Intégration d'**External Secrets Operator (ESO)** synchronisé avec **AWS Secrets Manager** pour proscrire tout secret en clair dans le cluster.
+
+### 3. SecOps, Ingress & Observabilité
+- **Routage Externe :** Déploiement d'**AWS ALB Ingress Controller** avec terminaison TLS/SSL automatique via **AWS ACM** (Certificate Manager).
+- **Moindre Privilège :** Configuration d'**IRSA** (*IAM Roles for Service Accounts*) pour attribuer des droits AWS granulaires directement aux Pods.
+- **Supervision :** Métriques d'infrastructure centralisées sous **CloudWatch** et stack **Prometheus / Grafana** interne au cluster.
